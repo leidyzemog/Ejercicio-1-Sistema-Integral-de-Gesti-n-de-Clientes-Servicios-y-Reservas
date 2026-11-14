@@ -161,7 +161,26 @@ class Servicio(Entidad, ABC):
             raise CalculoCostoError("El descuento debe estar entre 0 y 1.")
         total = subtotal * (1 + impuesto) * (1 - descuento)
         return round(total, 2)
+        
+    def calcular_costo_sobrecargado(self, *args, **kwargs):
+        # Python no tiene sobrecarga nativa; se simula según los argumentos recibidos
+        cantidad_args = len(args)  # Cuenta los argumentos posicionales
 
+        if cantidad_args == 0:  # Variante A: solo parámetros nombrados
+            return self.calcular_costo(**kwargs)  # Usa el cálculo propio del servicio
+
+        if cantidad_args == 1 and isinstance(args[0], dict):  # Variante B: un diccionario
+            return self.calcular_costo(**args[0])  # Desempaqueta el diccionario
+
+        todos_numeros = all(  # Verifica que todos los argumentos sean numéricos
+            isinstance(a, (int, float)) and not isinstance(a, bool) for a in args
+        )
+        if cantidad_args in (1, 2, 3) and todos_numeros:  # Variante C: (subtotal, impuesto, descuento)
+            return self.aplicar_impuestos_descuento(*args)  # Usa el método base
+
+        raise CalculoCostoError(  # Cualquier otra combinación es inválida
+            "Combinación de argumentos no soportada para calcular el costo."
+        )
     def obtener_resumen(self):
         estado = "Activo" if self.activo else "Inactivo"
         return f"Servicio #{self.identificador}: {self.nombre} | ${self.tarifa_base:,.2f} | {estado}"
