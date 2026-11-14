@@ -422,6 +422,64 @@ def cargar_servicios_iniciales():
 # SIMULACIÓN DE AL MENOS DIEZ OPERACIONES
 # ==========================================================
 
+def pruebas_adicionales(sistema_pruebas):
+    # 13. Servicio inválido: tarifa negativa
+    ejecutar_operacion(
+        "13. Crear servicio con tarifa negativa",
+        lambda: sistema_pruebas.registrar_servicio(ReservaSala("Sala defectuosa", -500, 10)),
+    )
+
+    # 14. Encadenamiento de excepciones al crear un servicio inválido
+    def servicio_encadenado():
+        try:  # Intenta crear una sala con capacidad 0
+            return sistema_pruebas.registrar_servicio(ReservaSala("Sala sin capacidad", 40000, 0))
+        except DatosInvalidosError as error:  # Captura el error original
+            raise ServicioNoDisponibleError("No se pudo crear el servicio de sala.") from error
+
+    ejecutar_operacion("14. Servicio inválido con encadenamiento", servicio_encadenado)
+
+    # 15. Reserva con un servicio inactivo
+    def reserva_servicio_inactivo():
+        cliente = sistema_pruebas.registrar_cliente("Laura Gómez", "laura@gmail.com", "3151234567")
+        equipo = sistema_pruebas.registrar_servicio(AlquilerEquipo("Cámara", 25000, 3))
+        equipo.activo = False  # Desactiva el servicio a propósito
+        reserva = sistema_pruebas.crear_reserva(
+            cliente.identificador, equipo.identificador, 1, {"cantidad": 1, "dias": 1}
+        )
+        reserva.confirmar()  # Lanza ServicioNoDisponibleError
+        return reserva.procesar()  # No se alcanza
+
+    ejecutar_operacion("15. Reservar un servicio inactivo", reserva_servicio_inactivo)
+
+    # 16. Cancelar una reserva pendiente (éxito)
+    def cancelar_valida():
+        cliente = sistema_pruebas.clientes[0]  # Primer cliente válido
+        sala = sistema_pruebas.registrar_servicio(ReservaSala("Sala auxiliar", 45000, 12))
+        reserva = sistema_pruebas.crear_reserva(
+            cliente.identificador, sala.identificador, 1, {"horas": 1, "asistentes": 5}
+        )
+        reserva.cancelar()  # Pendiente -> Cancelada
+        return reserva.obtener_resumen()
+
+    ejecutar_operacion("16. Cancelar reserva pendiente", cancelar_valida)
+
+    # 17. Demostración de sobrecarga (variantes A, B y C)
+    def demo_sobrecarga():
+        tablet = sistema_pruebas.registrar_servicio(AlquilerEquipo("Tablet", 20000, 4))
+        a = tablet.calcular_costo_sobrecargado(cantidad=2, dias=1)  # Variante A
+        b = tablet.calcular_costo_sobrecargado({"cantidad": 1, "dias": 2})  # Variante B
+        c = tablet.calcular_costo_sobrecargado(100000, 0.19, 0.10)  # Variante C
+        return f"A={a:,.2f} | B={b:,.2f} | C={c:,.2f}"
+
+    ejecutar_operacion("17. Sobrecarga de calcular_costo", demo_sobrecarga)
+
+    # 18. Sobrecarga con argumento inválido
+    ejecutar_operacion(
+        "18. Sobrecarga con argumento inválido",
+        lambda: sistema_pruebas.servicios[0].calcular_costo_sobrecargado("texto"),
+    )
+
+
 def ejecutar_pruebas():
     print("\n========== SIMULACIÓN DE OPERACIONES ==========")
     sistema_pruebas = SistemaGestion()
@@ -532,7 +590,7 @@ def ejecutar_pruebas():
         return f"Costo del alquiler con descuento: ${total:,.2f}"
 
     ejecutar_operacion("12. Calcular alquiler con descuento", costo_con_descuento)
-
+    pruebas_adicionales(sistema_pruebas)  # Operaciones 13 a 18
     print("\n========== FIN DE LAS PRUEBAS ==========")
     print("El sistema continuó funcionando después de los errores.")
 
@@ -581,7 +639,7 @@ def menu_principal():
         print("3. Consultar servicios")
         print("4. Crear reserva")
         print("5. Consultar reservas")
-        print("6. Ejecutar simulación de 12 operaciones")
+        print("6. Ejecutar simulación de 18 operaciones")
         print("7. Salir")
 
         opcion = input("\nSeleccione una opción: ").strip()
